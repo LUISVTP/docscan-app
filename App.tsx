@@ -2,6 +2,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 
+import CropScreen from './src/screens/CropScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import PreviewScreen from './src/screens/PreviewScreen';
 import ScanScreen from './src/screens/ScanScreen';
@@ -16,6 +17,7 @@ export default function App() {
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Scan" component={ScanScreen} />
         <Stack.Screen name="Preview" component={PreviewScreen} />
+        <Stack.Screen name="Crop" component={CropScreen} />
       </Stack.Navigator>
       <StatusBar style="auto" />
     </NavigationContainer>

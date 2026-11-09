@@ -1,4 +1,4 @@
-﻿import { Alert, Button, Image, StyleSheet, Text, View } from 'react-native';
+﻿import { Button, Image, StyleSheet, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../types/navigation';
@@ -23,7 +23,7 @@ export default function PreviewScreen({ navigation, route }: Props) {
         <Button title="Repetir" onPress={() => navigation.navigate('Scan')} />
         <Button
           title="Continuar"
-          onPress={() => Alert.alert('Próximamente: recorte')}
+          onPress={() => navigation.navigate('Crop', { imageUri })}
         />
       </View>
     </View>
