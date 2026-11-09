@@ -1,13 +1,17 @@
 {
   "expo": {
-    "name": "docscan-temp",
-    "slug": "docscan-temp",
+    "name": "docscan-app",
+    "slug": "docscan-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "DocScan necesita acceso a la camara para escanear documentos.",
+        "NSPhotoLibraryUsageDescription": "DocScan necesita acceso a la galeria para seleccionar imagenes."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -16,6 +20,11 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
       "predictiveBackGestureEnabled": false
     },
     "web": {

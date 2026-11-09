@@ -9,7 +9,7 @@ export default function HomeScreen({ navigation }: Props) {
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
       <Text>HomeScreen - lista de documentos</Text>
-      <Button title="Ir a Scan" onPress={() => navigation.navigate('Scan')} />
+      <Button title="Escanear" onPress={() => navigation.navigate('Scan')} />
     </View>
   );
 }
