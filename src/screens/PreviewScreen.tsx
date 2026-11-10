@@ -18,23 +18,46 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Preview'>;
 
 const FILTERS: { key: FilterName; label: string }[] = [
   { key: 'original', label: 'Original' },
-  { key: 'document', label: 'Documento' },
+  { key: 'magic', label: 'Mágico' },
   { key: 'bw', label: 'B/N' },
-  { key: 'color', label: 'Color' },
+  { key: 'gray', label: 'Grises' },
+  { key: 'lighten', label: 'Aclarar' },
 ];
 
 export default function PreviewScreen({ navigation, route }: Props) {
   const imageUri = route.params?.imageUri;
 
   const [originalUri, setOriginalUri] = useState<string | undefined>(imageUri);
-  const [displayUri, setDisplayUri] = useState<string | undefined>(imageUri);
-  const [activeFilter, setActiveFilter] = useState<FilterName>('original');
+  const [displayUri, setDisplayUri] = useState<string | undefined>(undefined);
+  const [activeFilter, setActiveFilter] = useState<FilterName>('magic');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setOriginalUri(imageUri);
-    setDisplayUri(imageUri);
-    setActiveFilter('original');
+    setActiveFilter('magic');
+    if (!imageUri) {
+      setDisplayUri(undefined);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const result = await applyFilter(imageUri, 'magic');
+        if (!cancelled) setDisplayUri(result);
+      } catch {
+        if (!cancelled) {
+          Alert.alert('Error', 'No se pudo aplicar el filtro. Se usa el original.');
+          setActiveFilter('original');
+          setDisplayUri(imageUri);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [imageUri]);
 
   const handleFilter = async (filter: FilterName) => {
@@ -49,7 +72,7 @@ export default function PreviewScreen({ navigation, route }: Props) {
       const result = await applyFilter(originalUri, filter);
       setDisplayUri(result);
     } catch {
-      Alert.alert('Error', 'No se pudo aplicar el filtro.');
+      Alert.alert('Error', 'No se pudo aplicar el filtro. Se usa el original.');
       setActiveFilter('original');
       setDisplayUri(originalUri);
     } finally {
@@ -101,7 +124,7 @@ export default function PreviewScreen({ navigation, route }: Props) {
         <Button title="Repetir" onPress={() => navigation.navigate('Scan')} />
         <Button
           title="Continuar"
-          onPress={() => navigation.navigate('Crop', { imageUri: displayUri })}
+          onPress={() => navigation.navigate('Crop', { imageUri: displayUri ?? originalUri })}
         />
       </View>
     </View>
@@ -138,12 +161,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingVertical: 12,
     backgroundColor: '#111',
+    flexWrap: 'wrap',
   },
   filterButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
     backgroundColor: 'rgba(255,255,255,0.15)',
+    margin: 4,
   },
   filterButtonActive: {
     backgroundColor: '#fff',

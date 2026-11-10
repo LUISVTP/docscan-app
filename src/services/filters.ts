@@ -1,41 +1,123 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import { ImageFormat, Skia } from '@shopify/react-native-skia';
+import {
+  FilterMode,
+  ImageFormat,
+  MipmapMode,
+  Skia,
+  TileMode,
+} from '@shopify/react-native-skia';
 
-export type FilterName = 'original' | 'document' | 'bw' | 'color';
+export type FilterName = 'original' | 'magic' | 'bw' | 'gray' | 'lighten';
 
-const BW_MATRIX = [
-  0.2126, 0.7152, 0.0722, 0, 0,
-  0.2126, 0.7152, 0.0722, 0, 0,
-  0.2126, 0.7152, 0.0722, 0, 0,
-  0, 0, 0, 1, 0,
-];
+// Ajusta estas constantes para calibrar los filtros.
+const MAX_WIDTH = 1600;
+const BLUR_RATIO = 0.035; // blur ~3.5% del ancho
+const BW_LOW = 0.75;
+const BW_HIGH = 0.85;
+const MAGIC_CONTRAST = 1.1;
+const MAGIC_SATURATION = 1.2;
+const MAGIC_WHITE_THRESHOLD = 0.92;
+const GRAY_CONTRAST = 1.2;
+const LIGHTEN_MIX = 0.5;
 
-const DOCUMENT_MATRIX = (() => {
-  const c = 1.6;
-  const b = 0.15;
-  return [
-    c * 0.2126, c * 0.7152, c * 0.0722, 0, b,
-    c * 0.2126, c * 0.7152, c * 0.0722, 0, b,
-    c * 0.2126, c * 0.7152, c * 0.0722, 0, b,
-    0, 0, 0, 1, 0,
-  ];
-})();
+const SKSL_MAGIC = `
+uniform shader original;
+uniform shader background;
+half4 main(float2 coord) {
+  half4 o = original.eval(coord);
+  half4 b = background.eval(coord);
+  half3 denom = max(b.rgb, half3(0.01));
+  half3 norm = clamp(o.rgb / denom, 0.0, 1.0);
+  norm = (norm - 0.5) * ${MAGIC_CONTRAST} + 0.5;
+  float luma = dot(norm, half3(0.2126, 0.7152, 0.0722));
+  norm = mix(half3(luma), norm, ${MAGIC_SATURATION});
+  if (o.r > ${MAGIC_WHITE_THRESHOLD} && o.g > ${MAGIC_WHITE_THRESHOLD} && o.b > ${MAGIC_WHITE_THRESHOLD}) {
+    norm = half3(1.0);
+  }
+  norm = clamp(norm, 0.0, 1.0);
+  return half4(norm, o.a);
+}
+`;
 
-const COLOR_MATRIX = (() => {
-  const s = 1.5;
-  return [
-    0.213 + 0.787 * s, 0.715 - 0.715 * s, 0.072 - 0.072 * s, 0, 0,
-    0.213 - 0.213 * s, 0.715 + 0.285 * s, 0.072 - 0.072 * s, 0, 0,
-    0.213 - 0.213 * s, 0.715 - 0.715 * s, 0.072 + 0.928 * s, 0, 0,
-    0, 0, 0, 1, 0,
-  ];
-})();
+const SKSL_BW = `
+uniform shader original;
+uniform shader background;
+half4 main(float2 coord) {
+  half4 o = original.eval(coord);
+  half4 b = background.eval(coord);
+  half3 denom = max(b.rgb, half3(0.01));
+  half3 norm = clamp(o.rgb / denom, 0.0, 1.0);
+  float luma = dot(norm, half3(0.2126, 0.7152, 0.0722));
+  float v = smoothstep(${BW_LOW}, ${BW_HIGH}, luma);
+  return half4(v, v, v, o.a);
+}
+`;
 
-const MATRICES: Record<Exclude<FilterName, 'original'>, number[]> = {
-  document: DOCUMENT_MATRIX,
-  bw: BW_MATRIX,
-  color: COLOR_MATRIX,
+const SKSL_GRAY = `
+uniform shader original;
+uniform shader background;
+half4 main(float2 coord) {
+  half4 o = original.eval(coord);
+  half4 b = background.eval(coord);
+  half3 denom = max(b.rgb, half3(0.01));
+  half3 norm = clamp(o.rgb / denom, 0.0, 1.0);
+  float luma = dot(norm, half3(0.2126, 0.7152, 0.0722));
+  luma = (luma - 0.5) * ${GRAY_CONTRAST} + 0.5;
+  luma = clamp(luma, 0.0, 1.0);
+  return half4(luma, luma, luma, o.a);
+}
+`;
+
+const SKSL_LIGHTEN = `
+uniform shader original;
+uniform shader background;
+half4 main(float2 coord) {
+  half4 o = original.eval(coord);
+  half4 b = background.eval(coord);
+  half3 denom = max(b.rgb, half3(0.01));
+  half3 norm = clamp(o.rgb / denom, 0.0, 1.0);
+  half3 result = mix(o.rgb, norm, ${LIGHTEN_MIX});
+  result = clamp(result, 0.0, 1.0);
+  return half4(result, o.a);
+}
+`;
+
+const SHADERS: Record<Exclude<FilterName, 'original'>, string> = {
+  magic: SKSL_MAGIC,
+  bw: SKSL_BW,
+  gray: SKSL_GRAY,
+  lighten: SKSL_LIGHTEN,
 };
+
+function toResized(image: NonNullable<ReturnType<typeof Skia.Image.MakeImageFromEncoded>>, w: number, h: number) {
+  if (image.width() === w && image.height() === h) return image;
+  const surface = Skia.Surface.Make(w, h);
+  if (!surface) throw new Error('No se pudo crear superficie.');
+  const canvas = surface.getCanvas();
+  const paint = Skia.Paint();
+  canvas.drawImageRect(
+    image,
+    Skia.XYWHRect(0, 0, image.width(), image.height()),
+    Skia.XYWHRect(0, 0, w, h),
+    paint,
+    true,
+  );
+  surface.flush();
+  return surface.makeImageSnapshot();
+}
+
+function toBlurred(image: NonNullable<ReturnType<typeof Skia.Image.MakeImageFromEncoded>>, sigma: number) {
+  const w = image.width();
+  const h = image.height();
+  const surface = Skia.Surface.Make(w, h);
+  if (!surface) throw new Error('No se pudo crear superficie.');
+  const canvas = surface.getCanvas();
+  const paint = Skia.Paint();
+  paint.setImageFilter(Skia.ImageFilter.MakeBlur(sigma, sigma, TileMode.Clamp, null));
+  canvas.drawImage(image, 0, 0, paint);
+  surface.flush();
+  return surface.makeImageSnapshot();
+}
 
 export async function applyFilter(uri: string, filter: FilterName): Promise<string> {
   if (filter === 'original') {
@@ -48,15 +130,43 @@ export async function applyFilter(uri: string, filter: FilterName): Promise<stri
     throw new Error('No se pudo decodificar la imagen.');
   }
 
-  const surface = Skia.Surface.Make(image.width(), image.height());
+  const scale = image.width() > MAX_WIDTH ? MAX_WIDTH / image.width() : 1;
+  const w = Math.round(image.width() * scale);
+  const h = Math.round(image.height() * scale);
+
+  const resized = toResized(image, w, h);
+  const sigma = Math.max(1, w * BLUR_RATIO);
+  const blurred = toBlurred(resized, sigma);
+
+  const source = SHADERS[filter];
+  const effect = Skia.RuntimeEffect.Make(source);
+  if (!effect) {
+    throw new Error('El shader no compilo.');
+  }
+
+  const origShader = resized.makeShaderOptions(
+    TileMode.Clamp,
+    TileMode.Clamp,
+    FilterMode.Linear,
+    MipmapMode.None,
+  );
+  const blurShader = blurred.makeShaderOptions(
+    TileMode.Clamp,
+    TileMode.Clamp,
+    FilterMode.Linear,
+    MipmapMode.None,
+  );
+
+  const runtimeShader = effect.makeShaderWithChildren([], [origShader, blurShader]);
+
+  const surface = Skia.Surface.Make(w, h);
   if (!surface) {
     throw new Error('No se pudo crear la superficie de dibujo.');
   }
-
   const canvas = surface.getCanvas();
   const paint = Skia.Paint();
-  paint.setColorFilter(Skia.ColorFilter.MakeMatrix(MATRICES[filter]));
-  canvas.drawImage(image, 0, 0, paint);
+  paint.setShader(runtimeShader);
+  canvas.drawRect(Skia.XYWHRect(0, 0, w, h), paint);
   surface.flush();
 
   const snapshot = surface.makeImageSnapshot();
