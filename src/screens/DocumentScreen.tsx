@@ -4,13 +4,19 @@ import {
   Image,
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import * as MediaLibrary from 'expo-media-library';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../types/navigation';
@@ -26,6 +32,30 @@ export default function DocumentScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [fullPage, setFullPage] = useState<string | null>(null);
+
+  const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+
+  useEffect(() => {
+    scale.value = 1;
+    savedScale.value = 1;
+  }, [fullPage, scale, savedScale]);
+
+  const pinch = Gesture.Pinch()
+    .onUpdate((e) => {
+      scale.value = savedScale.value * e.scale;
+    })
+    .onEnd(() => {
+      savedScale.value = scale.value;
+      if (scale.value < 1) {
+        scale.value = withSpring(1);
+        savedScale.value = 1;
+      }
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -69,29 +99,57 @@ export default function DocumentScreen({ navigation, route }: Props) {
     setExporting(true);
     try {
       const uri = await exportPdf(doc);
-      await shareUri(uri);
-    } catch {
-      Alert.alert('Error', 'No se pudo generar el PDF.');
+      await shareUri(uri, 'pdf');
+    } catch (e) {
+      console.log('PDF error:', e);
+      Alert.alert('Error', String(e instanceof Error ? e.message : e));
     } finally {
       setExporting(false);
     }
   };
 
-  const handleJpg = async () => {
+  const handleJpg = () => {
     if (!doc) return;
-    setExporting(true);
-    try {
-      const uris = exportJpgs(doc);
-      if (uris.length === 0) return;
-      await shareUri(uris[0]);
-      if (uris.length > 1) {
-        Alert.alert('JPG', `Se generaron ${uris.length} imágenes. Se compartió la primera.`);
-      }
-    } catch {
-      Alert.alert('Error', 'No se pudo compartir las imágenes.');
-    } finally {
-      setExporting(false);
-    }
+    const options: { text: string; onPress?: () => void; style?: 'cancel' | 'destructive' | 'default' }[] = doc.pages.map(
+      (uri, index) => ({
+        text: `Página ${index + 1}`,
+        onPress: async () => {
+          setExporting(true);
+          try {
+            await shareUri(uri, 'image');
+          } catch (e) {
+            console.log('JPG error:', e);
+            Alert.alert('Error', String(e instanceof Error ? e.message : e));
+          } finally {
+            setExporting(false);
+          }
+        },
+      }),
+    );
+    options.push({
+      text: 'Todas (guardar en galería)',
+      onPress: async () => {
+        setExporting(true);
+        try {
+          const perm = await MediaLibrary.requestPermissionsAsync();
+          if (!perm.granted) {
+            Alert.alert('Permiso requerido', 'Se necesita acceso a la galería.');
+            return;
+          }
+          for (const uri of doc.pages) {
+            await MediaLibrary.saveToLibraryAsync(uri);
+          }
+          Alert.alert('Guardado', 'Las imágenes se guardaron en la galería.');
+        } catch (e) {
+          console.log('Gallery error:', e);
+          Alert.alert('Error', String(e instanceof Error ? e.message : e));
+        } finally {
+          setExporting(false);
+        }
+      },
+    });
+    options.push({ text: 'Cancelar', style: 'cancel' });
+    Alert.alert('Compartir JPG', 'Elige una opción', options);
   };
 
   if (loading || !doc) {
@@ -108,7 +166,7 @@ export default function DocumentScreen({ navigation, route }: Props) {
         <Text style={styles.title}>{doc.name}</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.grid}>
+      <View style={styles.gridContainer}>
         {doc.pages.map((uri, index) => (
           <Pressable
             key={`${uri}_${index}`}
@@ -120,12 +178,12 @@ export default function DocumentScreen({ navigation, route }: Props) {
             <Text style={styles.thumbNumber}>{index + 1}</Text>
           </Pressable>
         ))}
-      </ScrollView>
+      </View>
 
       {exporting && (
         <View style={styles.exportingOverlay}>
           <ActivityIndicator size="large" color="#fff" />
-          <Text style={styles.exportingText}>Generando...</Text>
+          <Text style={styles.exportingText}>Procesando...</Text>
         </View>
       )}
 
@@ -149,20 +207,17 @@ export default function DocumentScreen({ navigation, route }: Props) {
           <Pressable style={styles.closeButton} onPress={() => setFullPage(null)}>
             <Text style={styles.closeText}>Cerrar</Text>
           </Pressable>
-          <ScrollView
-            contentContainerStyle={styles.fullscreenScroll}
-            maximumZoomScale={4}
-            minimumZoomScale={1}
-            centerContent
-          >
-            {fullPage ? (
-              <Image
-                source={{ uri: fullPage }}
-                style={styles.fullImage}
-                resizeMode="contain"
-              />
-            ) : null}
-          </ScrollView>
+          <GestureDetector gesture={pinch}>
+            <Animated.View style={[styles.fullscreenImageWrap, animatedStyle]}>
+              {fullPage ? (
+                <Image
+                  source={{ uri: fullPage }}
+                  style={styles.fullImage}
+                  resizeMode="contain"
+                />
+              ) : null}
+            </Animated.View>
+          </GestureDetector>
         </View>
       </Modal>
     </View>
@@ -187,7 +242,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
   },
-  grid: {
+  gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     padding: 12,
@@ -243,6 +298,8 @@ const styles = StyleSheet.create({
   fullscreen: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   closeButton: {
     position: 'absolute',
@@ -257,8 +314,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
-  fullscreenScroll: {
-    flex: 1,
+  fullscreenImageWrap: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
