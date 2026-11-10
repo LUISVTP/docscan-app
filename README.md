@@ -8,7 +8,7 @@ Document scanner app built with React Native + Expo (camera, crop, filters, mult
 - Scanner-quality filters via SkSL: original, magic, B/W, gray, lighten (default B/W).
 - Multi-page documents saved locally with AsyncStorage.
 - Document viewer with pinch zoom, page removal, rename/delete.
-- Robust PDF export (resized pages) and JPG save to gallery or share.
+- PDF generation with pdf-lib and JPG save/share.
 
 ## Getting started
 - Install dependencies: `npm install`
