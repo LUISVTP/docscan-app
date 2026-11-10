@@ -62,9 +62,56 @@ export async function addPage(documentId: string, pageUri: string): Promise<Docu
   return doc;
 }
 
+export async function getDocument(id: string): Promise<Document | null> {
+  const docs = await readDocuments();
+  return docs.find((d) => d.id === id) ?? null;
+}
+
 export async function getDocuments(): Promise<Document[]> {
   const docs = await readDocuments();
   return [...docs].sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function renameDocument(id: string, name: string): Promise<void> {
+  const docs = await readDocuments();
+  const index = docs.findIndex((d) => d.id === id);
+  if (index === -1) return;
+  docs[index].name = name;
+  await writeDocuments(docs);
+}
+
+export async function removePage(documentId: string, pageIndex: number): Promise<Document | null> {
+  const docs = await readDocuments();
+  const index = docs.findIndex((d) => d.id === documentId);
+  if (index === -1) return null;
+
+  const doc = docs[index];
+  if (pageIndex < 0 || pageIndex >= doc.pages.length) return doc;
+
+  const pagePath = doc.pages[pageIndex];
+  try {
+    await FileSystem.deleteAsync(pagePath, { idempotent: true });
+  } catch {
+    // ignore
+  }
+
+  doc.pages.splice(pageIndex, 1);
+
+  if (doc.pages.length === 0) {
+    // delete document folder + metadata
+    try {
+      await FileSystem.deleteAsync(`${DOCS_DIR}${doc.id}/`, { idempotent: true });
+    } catch {
+      // ignore
+    }
+    docs.splice(index, 1);
+    await writeDocuments(docs);
+    return null;
+  }
+
+  docs[index] = doc;
+  await writeDocuments(docs);
+  return doc;
 }
 
 export async function deleteDocument(id: string): Promise<void> {

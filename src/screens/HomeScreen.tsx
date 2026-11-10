@@ -1,17 +1,32 @@
-﻿import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+﻿import {
+  Alert,
+  Image,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../types/navigation';
 import { Document } from '../types/document';
-import { getDocuments } from '../services/storage';
+import {
+  deleteDocument,
+  getDocuments,
+  renameDocument,
+} from '../services/storage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export default function HomeScreen({ navigation }: Props) {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
+  const [renameId, setRenameId] = useState<string | null>(null);
+  const [renameText, setRenameText] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -28,6 +43,34 @@ export default function HomeScreen({ navigation }: Props) {
       load();
     }, [load]),
   );
+
+  const openRename = (doc: Document) => {
+    setRenameId(doc.id);
+    setRenameText(doc.name);
+  };
+
+  const confirmRename = async () => {
+    if (renameId && renameText.trim()) {
+      await renameDocument(renameId, renameText.trim());
+      setRenameId(null);
+      setRenameText('');
+      load();
+    }
+  };
+
+  const confirmDelete = (doc: Document) => {
+    Alert.alert('Eliminar documento', `¿Eliminar "${doc.name}"?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: async () => {
+          await deleteDocument(doc.id);
+          load();
+        },
+      },
+    ]);
+  };
 
   return (
     <View style={styles.container}>
@@ -48,7 +91,12 @@ export default function HomeScreen({ navigation }: Props) {
       ) : (
         <View style={styles.list}>
           {documents.map((doc) => (
-            <View key={doc.id} style={styles.card}>
+            <Pressable
+              key={doc.id}
+              style={styles.card}
+              onPress={() => navigation.navigate('Document', { documentId: doc.id })}
+              onLongPress={() => confirmDelete(doc)}
+            >
               {doc.pages.length > 0 ? (
                 <Image source={{ uri: doc.pages[0] }} style={styles.thumbnail} />
               ) : (
@@ -63,10 +111,50 @@ export default function HomeScreen({ navigation }: Props) {
                   {new Date(doc.createdAt).toLocaleString()}
                 </Text>
               </View>
-            </View>
+              <Pressable
+                style={styles.menuButton}
+                onPress={() => {
+                  Alert.alert(doc.name, 'Elige una opción', [
+                    { text: 'Renombrar', onPress: () => openRename(doc) },
+                    { text: 'Eliminar', onPress: () => confirmDelete(doc), style: 'destructive' },
+                    { text: 'Cancelar', style: 'cancel' },
+                  ]);
+                }}
+              >
+                <Text style={styles.menuText}>⋮</Text>
+              </Pressable>
+            </Pressable>
           ))}
         </View>
       )}
+
+      <Modal visible={!!renameId} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Renombrar documento</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={renameText}
+              onChangeText={setRenameText}
+              autoFocus
+            />
+            <View style={styles.modalButtons}>
+              <Pressable
+                style={styles.modalButton}
+                onPress={() => {
+                  setRenameId(null);
+                  setRenameText('');
+                }}
+              >
+                <Text>Cancelar</Text>
+              </Pressable>
+              <Pressable style={styles.modalButton} onPress={confirmRename}>
+                <Text style={{ fontWeight: '600' }}>Guardar</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -133,9 +221,51 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 2,
   },
+  menuButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  menuText: {
+    fontSize: 22,
+    color: '#666',
+  },
   message: {
     textAlign: 'center',
     marginTop: 40,
     color: '#666',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBox: {
+    width: '80%',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 16,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 12,
+    gap: 12,
+  },
+  modalButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
 });
