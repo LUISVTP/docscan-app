@@ -61,20 +61,10 @@ export async function exportPdf(doc: Document): Promise<string> {
 
   const result = await Print.printToFileAsync({ html, width: 595, height: 842 });
 
-  const safeName = doc.name.replace(/[^a-z0-9]/gi, '_') || 'document';
-  const target = `${FileSystem.cacheDirectory}${safeName}.pdf`;
-  await FileSystem.copyAsync({ from: result.uri, to: target });
-  try {
-    await FileSystem.deleteAsync(result.uri, { idempotent: true });
-  } catch {
-    // ignore
+  if (!result.uri) {
+    throw new Error('El PDF no se generó correctamente.');
   }
-
-  const info = await FileSystem.getInfoAsync(target);
-  if (!info.exists || (info.size ?? 0) <= 0) {
-    throw new Error('El PDF no se generó correctamente (archivo vacío).');
-  }
-  return target;
+  return result.uri;
 }
 
 export function exportJpgs(doc: Document): string[] {
