@@ -4,9 +4,9 @@ Document scanner app built with React Native + Expo (camera, crop, filters, mult
 ## Features
 - Camera capture with flash toggle.
 - Gallery image picker.
-- Preview of captured/selected image.
-- Manual crop with draggable corners.
-- Scanner-quality filters via SkSL: original, magic, B/W, gray, lighten.
+- Crop-first flow: crop then filters.
+- Scanner-quality filters via SkSL: original, magic, B/W, gray, lighten (default B/W).
+- Multi-page documents saved locally with AsyncStorage.
 
 ## Getting started
 - Install dependencies: `npm install`
