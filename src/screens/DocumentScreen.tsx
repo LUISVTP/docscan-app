@@ -23,6 +23,7 @@ import { RootStackParamList } from '../types/navigation';
 import { Document } from '../types/document';
 import { getDocument, removePage } from '../services/storage';
 import { exportJpgs, exportPdf, shareUri } from '../services/export';
+import { colors, radii } from '../utils/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Document'>;
 
@@ -62,6 +63,9 @@ export default function DocumentScreen({ navigation, route }: Props) {
     try {
       const d = await getDocument(documentId);
       setDoc(d);
+      if (d) {
+        navigation.setOptions({ title: d.name });
+      }
       if (!d) {
         navigation.navigate('Home');
       }
@@ -163,7 +167,9 @@ export default function DocumentScreen({ navigation, route }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>{doc.name}</Text>
+        <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">
+          {doc.name}
+        </Text>
       </View>
 
       <View style={styles.gridContainer}>
@@ -278,8 +284,8 @@ const styles = StyleSheet.create({
   button: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#007aff',
-    borderRadius: 8,
+    backgroundColor: colors.primary,
+    borderRadius: radii.sm,
   },
   buttonText: {
     color: '#fff',

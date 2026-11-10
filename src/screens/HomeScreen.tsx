@@ -8,6 +8,7 @@
   TextInput,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -19,6 +20,7 @@ import {
   getDocuments,
   renameDocument,
 } from '../services/storage';
+import { colors, radii } from '../utils/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -75,19 +77,13 @@ export default function HomeScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>DocScan</Text>
-        <Pressable
-          style={styles.scanButton}
-          onPress={() => navigation.navigate('Scan', undefined)}
-        >
-          <Text style={styles.scanButtonText}>Escanear</Text>
-        </Pressable>
+        <Text style={styles.title}>Mis documentos</Text>
       </View>
 
       {loading ? (
         <Text style={styles.message}>Cargando...</Text>
       ) : documents.length === 0 ? (
-        <Text style={styles.message}>No hay documentos guardados.</Text>
+        <Text style={styles.empty}>Aún no tienes documentos. Toca el botón para escanear.</Text>
       ) : (
         <View style={styles.list}>
           {documents.map((doc) => (
@@ -103,12 +99,14 @@ export default function HomeScreen({ navigation }: Props) {
                 <View style={styles.thumbnailPlaceholder} />
               )}
               <View style={styles.cardInfo}>
-                <Text style={styles.docName}>{doc.name}</Text>
+                <Text style={styles.docName} numberOfLines={2} ellipsizeMode="tail">
+                  {doc.name}
+                </Text>
                 <Text style={styles.docMeta}>
                   {doc.pages.length} página{doc.pages.length === 1 ? '' : 's'}
                 </Text>
                 <Text style={styles.docMeta}>
-                  {new Date(doc.createdAt).toLocaleString()}
+                  {new Date(doc.createdAt).toLocaleString('es-CO')}
                 </Text>
               </View>
               <Pressable
@@ -127,6 +125,13 @@ export default function HomeScreen({ navigation }: Props) {
           ))}
         </View>
       )}
+
+      <Pressable
+        style={styles.fab}
+        onPress={() => navigation.navigate('Scan', undefined)}
+      >
+        <Ionicons name="camera" size={26} color="#fff" />
+      </Pressable>
 
       <Modal visible={!!renameId} transparent animationType="fade">
         <View style={styles.modalOverlay}>
@@ -149,7 +154,7 @@ export default function HomeScreen({ navigation }: Props) {
                 <Text>Cancelar</Text>
               </Pressable>
               <Pressable style={styles.modalButton} onPress={confirmRename}>
-                <Text style={{ fontWeight: '600' }}>Guardar</Text>
+                <Text style={{ fontWeight: '600', color: colors.primary }}>Guardar</Text>
               </Pressable>
             </View>
           </View>
@@ -162,36 +167,24 @@ export default function HomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   title: {
     fontSize: 22,
     fontWeight: '700',
-  },
-  scanButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#007aff',
-    borderRadius: 8,
-  },
-  scanButtonText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: colors.text,
   },
   list: {
     padding: 12,
   },
   card: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 10,
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
     padding: 10,
     marginBottom: 10,
     alignItems: 'center',
@@ -199,14 +192,14 @@ const styles = StyleSheet.create({
   thumbnail: {
     width: 60,
     height: 80,
-    borderRadius: 6,
-    backgroundColor: '#eee',
+    borderRadius: radii.sm,
+    backgroundColor: colors.border,
   },
   thumbnailPlaceholder: {
     width: 60,
     height: 80,
-    borderRadius: 6,
-    backgroundColor: '#eee',
+    borderRadius: radii.sm,
+    backgroundColor: colors.border,
   },
   cardInfo: {
     marginLeft: 12,
@@ -215,10 +208,11 @@ const styles = StyleSheet.create({
   docName: {
     fontSize: 16,
     fontWeight: '600',
+    color: colors.text,
   },
   docMeta: {
     fontSize: 12,
-    color: '#666',
+    color: colors.muted,
     marginTop: 2,
   },
   menuButton: {
@@ -227,12 +221,30 @@ const styles = StyleSheet.create({
   },
   menuText: {
     fontSize: 22,
-    color: '#666',
+    color: colors.muted,
+  },
+  empty: {
+    textAlign: 'center',
+    marginTop: 40,
+    color: colors.muted,
+    paddingHorizontal: 24,
   },
   message: {
     textAlign: 'center',
     marginTop: 40,
-    color: '#666',
+    color: colors.muted,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
   },
   modalOverlay: {
     flex: 1,
@@ -242,21 +254,23 @@ const styles = StyleSheet.create({
   },
   modalBox: {
     width: '80%',
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
     padding: 16,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 12,
+    color: colors.text,
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
     padding: 10,
     fontSize: 16,
+    color: colors.text,
   },
   modalButtons: {
     flexDirection: 'row',

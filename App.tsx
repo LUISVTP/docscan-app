@@ -15,10 +15,10 @@ export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Home">
-        <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen name="Scan" component={ScanScreen} />
-        <Stack.Screen name="Preview" component={PreviewScreen} />
-        <Stack.Screen name="Crop" component={CropScreen} />
+        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Mis documentos' }} />
+        <Stack.Screen name="Scan" component={ScanScreen} options={{ title: 'Escanear' }} />
+        <Stack.Screen name="Preview" component={PreviewScreen} options={{ title: 'Filtros' }} />
+        <Stack.Screen name="Crop" component={CropScreen} options={{ title: 'Recortar' }} />
         <Stack.Screen name="Document" component={DocumentScreen} />
       </Stack.Navigator>
       <StatusBar style="auto" />

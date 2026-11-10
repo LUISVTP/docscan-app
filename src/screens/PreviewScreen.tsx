@@ -13,6 +13,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../types/navigation';
 import { applyFilter, FilterName } from '../services/filters';
+import { colors } from '../utils/theme';
 import { addPage, createDocument } from '../services/storage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Preview'>;
@@ -207,14 +208,14 @@ const styles = StyleSheet.create({
     margin: 4,
   },
   filterButtonActive: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.primary,
   },
   filterText: {
     color: '#fff',
     fontWeight: '600',
   },
   filterTextActive: {
-    color: '#000',
+    color: '#fff',
   },
   buttons: {
     flexDirection: 'row',

@@ -12,6 +12,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../types/navigation';
+import { colors, radii } from '../utils/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Crop'>;
 
@@ -294,8 +295,8 @@ const styles = StyleSheet.create({
   button: {
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 8,
+    backgroundColor: colors.primary,
+    borderRadius: radii.sm,
   },
   buttonText: {
     color: '#fff',

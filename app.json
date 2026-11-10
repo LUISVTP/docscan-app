@@ -1,11 +1,16 @@
 {
   "expo": {
-    "name": "docscan-app",
-    "slug": "docscan-app",
+    "name": "DocScan",
+    "slug": "docscan",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0E7C86"
+    },
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
@@ -14,11 +19,10 @@
       }
     },
     "android": {
+      "package": "com.docscan.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#0E7C86",
+        "foregroundImage": "./assets/adaptive-icon.png"
       },
       "permissions": [
         "CAMERA",

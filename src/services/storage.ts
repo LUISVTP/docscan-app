@@ -32,9 +32,20 @@ export async function createDocument(firstPageUri: string): Promise<Document> {
   const pagePath = `${folder}page-1.jpg`;
   await FileSystem.copyAsync({ from: firstPageUri, to: pagePath });
 
+  const now = new Date();
+  const datePart = now.toLocaleDateString('es-CO', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+  const timePart = now.toLocaleTimeString('es-CO', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
   const doc: Document = {
     id,
-    name: `Documento ${new Date().toLocaleString()}`,
+    name: `Escaneo ${datePart}, ${timePart}`,
     createdAt: Date.now(),
     pages: [pagePath],
   };
