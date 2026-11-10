@@ -1,70 +1,49 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
-import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { PDFDocument } from 'pdf-lib';
 import { Alert } from 'react-native';
 
 import { Document } from '../types/document';
 
 export async function exportPdf(doc: Document): Promise<string> {
-  const images: string[] = [];
+  const pdfDoc = await PDFDocument.create();
+
   for (const uri of doc.pages) {
     const resized = await ImageManipulator.manipulateAsync(
       uri,
       [{ resize: { width: 1240 } }],
-      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true },
     );
-    const base64 = await FileSystem.readAsStringAsync(resized.uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    images.push(`data:image/jpeg;base64,${base64}`);
-    try {
-      await FileSystem.deleteAsync(resized.uri, { idempotent: true });
-    } catch {
-      // ignore
+
+    if (!resized.base64) {
+      throw new Error('No se pudo obtener la imagen en base64.');
     }
+
+    const image = await pdfDoc.embedJpg(resized.base64);
+    const page = pdfDoc.addPage([595, 842]);
+
+    const margin = 10;
+    const maxW = 595 - margin * 2;
+    const maxH = 842 - margin * 2;
+    const scale = Math.min(maxW / image.width, maxH / image.height);
+    const w = image.width * scale;
+    const h = image.height * scale;
+    const x = (595 - w) / 2;
+    const y = (842 - h) / 2;
+
+    page.drawImage(image, { x, y, width: w, height: h });
   }
 
-  const pagesHtml = images
-    .map(
-      (src) =>
-        `<div class="page"><img src="${src}" style="width:100%;height:100%;object-fit:contain;" /></div>`,
-    )
-    .join('');
+  const base64Pdf = await pdfDoc.saveAsBase64();
 
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8" />
-<style>
-  @page { size: A4; margin: 0; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { margin: 0; }
-  .page {
-    width: 210mm;
-    height: 297mm;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    page-break-after: always;
-  }
-  .page:last-child { page-break-after: auto; }
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-</style>
-</head>
-<body>${pagesHtml}</body>
-</html>`;
+  const safeName = doc.name.replace(/[^a-zA-Z0-9]/g, '_') || 'document';
+  const target = `${FileSystem.cacheDirectory}${safeName}.pdf`;
+  await FileSystem.writeAsStringAsync(target, base64Pdf, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
 
-  const result = await Print.printToFileAsync({ html, width: 595, height: 842 });
-
-  if (!result.uri) {
-    throw new Error('El PDF no se generó correctamente.');
-  }
-  return result.uri;
+  return target;
 }
 
 export function exportJpgs(doc: Document): string[] {
