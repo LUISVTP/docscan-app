@@ -13,6 +13,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../types/navigation';
 import { applyFilter, FilterName } from '../services/filters';
+import { addPage, createDocument } from '../services/storage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Preview'>;
 
@@ -26,15 +27,17 @@ const FILTERS: { key: FilterName; label: string }[] = [
 
 export default function PreviewScreen({ navigation, route }: Props) {
   const imageUri = route.params?.imageUri;
+  const documentId = route.params?.documentId;
 
   const [originalUri, setOriginalUri] = useState<string | undefined>(imageUri);
   const [displayUri, setDisplayUri] = useState<string | undefined>(undefined);
-  const [activeFilter, setActiveFilter] = useState<FilterName>('magic');
+  const [activeFilter, setActiveFilter] = useState<FilterName>('bw');
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setOriginalUri(imageUri);
-    setActiveFilter('magic');
+    setActiveFilter('bw');
     if (!imageUri) {
       setDisplayUri(undefined);
       return;
@@ -43,7 +46,7 @@ export default function PreviewScreen({ navigation, route }: Props) {
     (async () => {
       setLoading(true);
       try {
-        const result = await applyFilter(imageUri, 'magic');
+        const result = await applyFilter(imageUri, 'bw');
         if (!cancelled) setDisplayUri(result);
       } catch {
         if (!cancelled) {
@@ -80,6 +83,35 @@ export default function PreviewScreen({ navigation, route }: Props) {
     }
   };
 
+  const savePage = async () => {
+    const uriToSave = displayUri ?? originalUri;
+    if (!uriToSave) return;
+    setSaving(true);
+    try {
+      let currentDocId = documentId;
+      if (!currentDocId) {
+        const doc = await createDocument(uriToSave);
+        currentDocId = doc.id;
+      } else {
+        await addPage(currentDocId, uriToSave);
+      }
+      Alert.alert('Página guardada', '¿Qué deseas hacer?', [
+        {
+          text: 'Agregar otra página',
+          onPress: () => navigation.navigate('Scan', { documentId: currentDocId }),
+        },
+        {
+          text: 'Terminar',
+          onPress: () => navigation.navigate('Home'),
+        },
+      ]);
+    } catch {
+      Alert.alert('Error', 'No se pudo guardar la página.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.imageArea}>
@@ -107,7 +139,7 @@ export default function PreviewScreen({ navigation, route }: Props) {
               activeFilter === filter.key && styles.filterButtonActive,
             ]}
             onPress={() => handleFilter(filter.key)}
-            disabled={loading}
+            disabled={loading || saving}
           >
             <Text
               style={[
@@ -121,10 +153,14 @@ export default function PreviewScreen({ navigation, route }: Props) {
         ))}
       </View>
       <View style={styles.buttons}>
-        <Button title="Repetir" onPress={() => navigation.navigate('Scan')} />
         <Button
-          title="Continuar"
-          onPress={() => navigation.navigate('Crop', { imageUri: displayUri ?? originalUri })}
+          title="Repetir"
+          onPress={() => navigation.navigate('Scan', { documentId })}
+        />
+        <Button
+          title={saving ? 'Guardando...' : 'Guardar página'}
+          onPress={savePage}
+          disabled={saving || loading || !displayUri}
         />
       </View>
     </View>

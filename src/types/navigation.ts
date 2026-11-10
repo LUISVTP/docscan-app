@@ -1,6 +1,6 @@
 ﻿export type RootStackParamList = {
   Home: undefined;
-  Scan: undefined;
-  Preview: { imageUri?: string } | undefined;
-  Crop: { imageUri?: string } | undefined;
+  Scan: { documentId?: string } | undefined;
+  Crop: { imageUri?: string; documentId?: string } | undefined;
+  Preview: { imageUri?: string; documentId?: string } | undefined;
 };

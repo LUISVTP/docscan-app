@@ -19,6 +19,7 @@ const MIN_SIZE = 40;
 
 export default function CropScreen({ navigation, route }: Props) {
   const imageUri = route.params?.imageUri;
+  const documentId = route.params?.documentId;
 
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(
     null,
@@ -148,7 +149,7 @@ export default function CropScreen({ navigation, route }: Props) {
         [{ crop: { originX: clampedX, originY: clampedY, width: clampedW, height: clampedH } }],
         { compress: 1, format: ImageManipulator.SaveFormat.JPEG },
       );
-      navigation.navigate('Preview', { imageUri: result.uri });
+      navigation.navigate('Preview', { imageUri: result.uri, documentId });
     } catch {
       Alert.alert('Error', 'No se pudo recortar la imagen.');
     }

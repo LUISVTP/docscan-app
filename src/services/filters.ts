@@ -11,9 +11,9 @@ export type FilterName = 'original' | 'magic' | 'bw' | 'gray' | 'lighten';
 
 // Ajusta estas constantes para calibrar los filtros.
 const MAX_WIDTH = 1600;
-const BLUR_RATIO = 0.035; // blur ~3.5% del ancho
-const BW_LOW = 0.75;
-const BW_HIGH = 0.85;
+const BLUR_RATIO = 0.03; // blur ~3% del ancho
+const BW_LOW = 0.80;
+const BW_HIGH = 0.88;
 const MAGIC_CONTRAST = 1.1;
 const MAGIC_SATURATION = 1.2;
 const MAGIC_WHITE_THRESHOLD = 0.92;

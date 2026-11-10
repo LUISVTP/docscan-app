@@ -15,7 +15,8 @@ import { RootStackParamList } from '../types/navigation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Scan'>;
 
-export default function ScanScreen({ navigation }: Props) {
+export default function ScanScreen({ navigation, route }: Props) {
+  const documentId = route.params?.documentId;
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [flashOn, setFlashOn] = useState(false);
@@ -27,7 +28,7 @@ export default function ScanScreen({ navigation }: Props) {
     try {
       const photo = await cameraRef.current.takePictureAsync();
       if (photo?.uri) {
-        navigation.navigate('Preview', { imageUri: photo.uri });
+        navigation.navigate('Crop', { imageUri: photo.uri, documentId });
       }
     } catch (error) {
       Alert.alert('Error', 'No se pudo capturar la imagen.');
@@ -47,7 +48,7 @@ export default function ScanScreen({ navigation }: Props) {
       quality: 1,
     });
     if (!result.canceled && result.assets.length > 0) {
-      navigation.navigate('Preview', { imageUri: result.assets[0].uri });
+      navigation.navigate('Crop', { imageUri: result.assets[0].uri, documentId });
     }
   };
 
